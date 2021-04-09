@@ -97,6 +97,38 @@ gen.simuProb = function(gen, pro, statePro, ancestors, stateAncestors, simulNo=5
 	v
 }
 #print.it = F, 
+
+gen.simuHaplo = function (gen, pro, ancestors, simulNo = 5000, RecombRate=c(0,0), Reconstruction =0, BP=0, Hapfile=NULL, Mapfile=NULL){
+	print("checkpoint")
+	if(!is(gen, "GLgen"))
+		stop("Invalid parameter: gen must be an instance of Glgen (see gen.genealogy)")
+	if(!is(pro, "numeric") )
+		stop("Invalid parameter: pro must be a numeric vector")
+	if(!is(ancestors, "numeric") )
+		stop("Invalid parameter: ancestor must be numeric vector")
+	if(simulNo <= 0)
+		stop("Invalid parameter: simulNo must be greater than zero")
+	if(!is(RecombRate, "numeric"))
+		stop("Recombination rate must be a numeric vector ")
+	#comparisons to NULL don't produce boolean value	
+	#if(Reconstruction==1 & (Hapfile==NULL | Mapfile==NULL))
+		#stop("If reconstruction is set to 1 must specify the hap and map files")
+	if(Reconstruction==1 & BP==0)
+		stop("If reconstruction is set to 1, you must specify the size of the segment in MB")
+
+	WD<-getwd()
+	if(Reconstruction == 1){
+		pathHap<-paste(WD,Hapfile,sep="/")
+		pathMap<-paste(WD,Mapfile,sep="/")
+	}
+
+	returnsimuhaplo <- .Call("SPLUSSimulHaplo", gen@.Data, pro, length(pro), ancestors, length(ancestors), as.integer(simulNo), RecombRate, as.integer(Reconstruction), BP, WD, pathHap, pathMap, package="GENLIB")
+	
+	return(returnsimuhaplo)
+
+}
+
+
 gen.simuSample = function(gen, pro, ancestors, stateAncestors, simulNo = 5000)#, named = T)
 {
 	if(!is(gen, "GLgen"))
