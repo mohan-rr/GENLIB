@@ -239,25 +239,47 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 		int clesSim= cleFixe;
 
 		for(int i=0;i<NOrdre;i++) {
-			int nbRec = 0;
-			int nbMeioses = 0;
 
-			int nbRecomb = getNumberRec(probRecomb, Ordre[i]->sex);
-			if(nbRecomb > 0){
-				for(int r=0; r<nbRecomb; r++) {
-					double pHap = getRandomNumber(0); //double(gen())/double(gen.max());
-					tailleTot = getRandomNumber(0); //vecteur_prob[int(floor(getRandomNumber(0)*nbPositionRandom))]; //alea_Exp(position_generator);
-					Rcpp::Rcout <<tailleTot << std::endl;
-					nbRec++;
-					makeRecomb(Ordre[i], hapRef, pHap, tailleTot, clesSim);
+			int nbRecomb1 = getNumberRec(probRecomb, Ordre[i]->sex); //number of recombination events of father's chromosomes
+			int nbRecomb2 = getNumberRec(probRecomb, Ordre[i]->sex); //number of recombination events of mother's chromosomes
+			int pHap;
+
+			if(nbRecomb1 > 0){ //Recombination event in the father
+				nbRecomb1 = 1; // for now limiting the number of recombination events to 1, will work on simulating multiple events later
+				pHap = getRandomNumber(0);
+				tailleTot = getRandomNumber(0);
+				makeRecombF(Ordre[i], hapRef, pHap, tailleTot, clesSim);
+			}
+			else{ //If no recombination just pass one of father's chromosomes down 
+				pHap = getRandomNumber(0);
+				if(Ordre[i]->pere != NULL){
+					if(pHap<0.50){
+						 Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_1;
+					}
+					else{
+						Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_2;
+					}
 				}
-				nbMeioses++;
+				
 			}
-			else {
-				double probHap = getRandomNumber(0); //double(gen())/double(gen.max());
-				descendreHaplotypes(Ordre[i], probHap); //, hapRef);
+
+			if(nbRecomb2 > 0){ //Recombination event in mother
+				pHap = getRandomNumber(0);
+				nbRecomb2 = 1; // limiting to 1 for now
+				makeRecombM(Ordre[i], hapRef, pHap, tailleTot, clesSim);				
 			}
+			else{
+				pHap = getRandomNumber(0);
+				if(Ordre[i]->mere != NULL){
+					if(pHap<0.50){
+						 Ordre[i]->clesHaplo_2=Ordre[i]->mere->clesHaplo_1;
+					}
+					else{
+						Ordre[i]->clesHaplo_2=Ordre[i]->mere->clesHaplo_2;
+					}
+				}
 			
+			}			
 			std::stringstream hap;
 
 			haplotype* tmp = (*hapRef).find(Ordre[i]->clesHaplo_1)->second;
@@ -277,7 +299,7 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 				pos = tmp->pos;
 				if(pos == -1.0) pos = 1;
 			}	
-			outAllHaplo <<"{"<< csimul+1 <<";"<< Ordre[i]->nom <<";"<< nbRec <<"}"<< hap.str() << std::endl;
+			outAllHaplo <<"{"<< csimul+1 <<";"<< Ordre[i]->nom <<";"<< nbRecomb1 << "-" << nbRecomb2 <<"}"<< hap.str() << std::endl;
 
 		}
 		
@@ -373,6 +395,7 @@ double getRandomNumber(int exponential)
   }
 }
 
+//no longer call this function in simulhaplo, do it directly in the main loop of simulhaplo
 int descendreHaplotypes(CIndSimul* Ordre_tmp, double probHap)
 {
   if(Ordre_tmp->pere != NULL && Ordre_tmp->mere != NULL) {
@@ -398,6 +421,7 @@ int descendreHaplotypes(CIndSimul* Ordre_tmp, double probHap)
   return 0;
 }
 
+//no longer use this function for simulhaplo now it instead uses makeRecombF for recombination of father's chromosomes and makeRecombM for mother
 void makeRecomb( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
 {
 //  double posRecomb = 0.5;
@@ -430,19 +454,72 @@ void makeRecomb( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapR
   }
 
   haplotype *hapChild_1 = new haplotype();
-  Ordre_tmp->clesHaplo_1 = cle;
-  (*hapRef)[cle++] = hapChild_1;
   haplotype *hapChild_deb1 = hapChild_1;
   recombine(hapPere, hapMere, hapChild_deb1, posRecomb);
+  Ordre_tmp->clesHaplo_1 = cle;
+  (*hapRef)[cle++] = hapChild_1;
 
 
 
   haplotype *hapChild_2 = new haplotype();
+  haplotype *hapChild_deb2 = hapChild_2;
+  recombine(hapMere, hapPere, hapChild_deb2, posRecomb);  
   Ordre_tmp->clesHaplo_2 = cle;
   (*hapRef)[cle++] = hapChild_2;
-  haplotype *hapChild_deb2 = hapChild_2;
-  recombine(hapMere, hapPere, hapChild_deb2, posRecomb);
   
+}
+
+void makeRecombF( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
+{
+    haplotype *perehap1, *perehap2;
+
+    if (Ordre_tmp->pere != NULL){
+        if (probHap < 0.50){
+            perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
+            perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
+        } 
+        else{
+            perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
+            perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
+        }
+    }
+    else{
+        perehap1=(*hapRef).find(0)->second;
+        perehap2=(*hapRef).find(0)->second;   
+    }
+
+    haplotype *hapChild_1 = new haplotype();
+    haplotype *hapChild_deb1 = hapChild_1;
+    recombine(perehap1, perehap2, hapChild_deb1, posRecomb);
+    Ordre_tmp->clesHaplo_1 = cle;
+    (*hapRef)[cle++] = hapChild_1;
+}
+
+
+void makeRecombM( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
+{
+    haplotype *merehap1, *merehap2;
+ 
+    if (Ordre_tmp->mere != NULL){
+        if (probHap < 0.50){
+            merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
+            merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
+        } 
+        else{
+            merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
+            merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
+        }
+    }
+    else{
+        merehap1=(*hapRef).find(0)->second;
+        merehap2=(*hapRef).find(0)->second;   
+    }
+
+    haplotype *hapChild_2 = new haplotype();
+    haplotype *hapChild_deb2 = hapChild_2;
+    recombine(merehap1, merehap2, hapChild_deb2, posRecomb);
+    Ordre_tmp->clesHaplo_2 = cle;
+    (*hapRef)[cle++] = hapChild_2;
 }
 
 void recombine(haplotype* hapBegin, haplotype* hapEnd, haplotype* hapChild, double posRecomb )
