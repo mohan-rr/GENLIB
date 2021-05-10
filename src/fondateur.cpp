@@ -240,16 +240,25 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 
 		for(int i=0;i<NOrdre;i++) {
 
-			int nbRecomb1 = getNumberRec(probRecomb, Ordre[i]->sex); //number of recombination events of father's chromosomes
-			int nbRecomb2 = getNumberRec(probRecomb, Ordre[i]->sex); //number of recombination events of mother's chromosomes
+			int nbRecomb1 = getNumberRec(probRecomb, Ordre[i]->pere->sex); //number of recombination events of father's chromosomes
+			int nbRecomb2 = getNumberRec(probRecomb, Ordre[i]->mere->sex); //number of recombination events of mother's chromosomes
 			int pHap;
 
 			if(nbRecomb1 > 0){ //Recombination event in the father
 				nbRecomb1 = 1; // for now limiting the number of recombination events to 1, will work on simulating multiple events later
 				pHap = getRandomNumber(0);
-				tailleTot = getRandomNumber(0);
-				makeRecombF(Ordre[i], hapRef, pHap, tailleTot, clesSim);
+				if(pHap<0.25){ //Recombinant gamete not inherited
+					Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_1;
+				}
+				else if(pHap<0.50){ // Recombinant gamete not inherited
+					Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_2;
+				}
+				else{ // Recombinant gamete inherited				
+					tailleTot = getRandomNumber(0);
+					makeRecombF(Ordre[i], hapRef, pHap, tailleTot, clesSim);
+				}			
 			}
+
 			else{ //If no recombination just pass one of father's chromosomes down 
 				pHap = getRandomNumber(0);
 				if(Ordre[i]->pere != NULL){
@@ -264,9 +273,18 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 			}
 
 			if(nbRecomb2 > 0){ //Recombination event in mother
-				pHap = getRandomNumber(0);
 				nbRecomb2 = 1; // limiting to 1 for now
-				makeRecombM(Ordre[i], hapRef, pHap, tailleTot, clesSim);				
+				pHap = getRandomNumber(0);
+				if(pHap<0.25){ // Recombinant Gamete not inherited
+					Ordre[i]->clesHaplo_1=Ordre[i]->mere->clesHaplo_1;
+				}
+				else if(pHap<0.50){// Recombinant Gamete not inherited
+					Ordre[i]->clesHaplo_1=Ordre[i]->mere->clesHaplo_2;
+				}
+				else{			 //Recombinant Gamete inherited	
+					tailleTot = getRandomNumber(0);
+					makeRecombM(Ordre[i], hapRef, pHap, tailleTot, clesSim);
+				}
 			}
 			else{
 				pHap = getRandomNumber(0);
@@ -474,7 +492,7 @@ void makeRecombF( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hap
     haplotype *perehap1, *perehap2;
 
     if (Ordre_tmp->pere != NULL){
-        if (probHap < 0.50){
+        if (probHap < 0.75){
             perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
             perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
         } 
@@ -501,7 +519,7 @@ void makeRecombM( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hap
     haplotype *merehap1, *merehap2;
  
     if (Ordre_tmp->mere != NULL){
-        if (probHap < 0.50){
+        if (probHap < 0.75){
             merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
             merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
         } 
