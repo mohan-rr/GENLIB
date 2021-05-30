@@ -148,7 +148,7 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 	std::ofstream outHaplo(stroutHaplo.c_str());
 	std::ofstream outAllHaplo(stroutAllHaplo.c_str());
 	
-	Rcpp::Rcout << "check1" << std::endl;
+	Rcpp::Rcout << *probRecomb << std::endl;
 	outHaplo << lSimul << ";" << lNProposant << "\n";
 	outAllHaplo << lSimul << ";" << lNProposant << "\n";
 
@@ -235,69 +235,82 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 	//Simulation
 	for(int csimul=0;csimul<lSimul; csimul++)
 	{
-		double tailleTot = 0.0;
+		Rcpp::Rcout << "check2" << std::endl;
 		int clesSim= cleFixe;
 
 		for(int i=0;i<NOrdre;i++) {
+			Rcpp::Rcout << Ordre[i]->nom << std::endl;
 
-			int nbRecomb1 = getNumberRec(probRecomb, Ordre[i]->pere->sex); //number of recombination events of father's chromosomes
-			int nbRecomb2 = getNumberRec(probRecomb, Ordre[i]->mere->sex); //number of recombination events of mother's chromosomes
-			int pHap;
+			int nbRecomb1 = getNumberRec(probRecomb, 1); //number of recombination events of father's chromosomes
+			int nbRecomb2 = getNumberRec(probRecomb, 2); //number of recombination events of mother's chromosomes
+			double pHap;
 
-			if(nbRecomb1 > 0){ //Recombination event in the father
-				nbRecomb1 = 1; // for now limiting the number of recombination events to 1, will work on simulating multiple events later
-				pHap = getRandomNumber(0);
-				if(pHap<0.25){ //Recombinant gamete not inherited
-					Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_1;
-				}
-				else if(pHap<0.50){ // Recombinant gamete not inherited
-					Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_2;
-				}
-				else{ // Recombinant gamete inherited				
-					tailleTot = getRandomNumber(0);
-					makeRecombF(Ordre[i], hapRef, pHap, tailleTot, clesSim);
+			outAllHaplo <<"{"<< csimul+1 <<";"<< Ordre[i]->nom <<";" ;
+			
+			if(Ordre[i]->pere != NULL){
+				outAllHaplo << nbRecomb1 <<",";
+				if(nbRecomb1 > 0){ //Recombination event in the father
+					nbRecomb1 = 1; // for now limiting to 1 crossover, getting an error with multiple
+					double tailleTot[nbRecomb1];
+					pHap = getRandomNumber(0);
+					outAllHaplo << pHap;
+
+					for(int j=0;j<nbRecomb1;j++){
+						tailleTot[j] = getRandomNumber(0);
+						outAllHaplo << "," << tailleTot[j];
+					}
+					std::sort(tailleTot,tailleTot + nbRecomb1);
+					makeRecombF(Ordre[i], hapRef, pHap, nbRecomb1, tailleTot, clesSim);
+					outAllHaplo << ";";
 				}			
-			}
-
-			else{ //If no recombination just pass one of father's chromosomes down 
-				pHap = getRandomNumber(0);
-				if(Ordre[i]->pere != NULL){
+				else{ //If no recombination just pass one of father's chromosomes down 
+					pHap = getRandomNumber(0);
+					outAllHaplo << pHap << ",0;";
 					if(pHap<0.50){
-						 Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_1;
+						Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_1;
 					}
 					else{
 						Ordre[i]->clesHaplo_1=Ordre[i]->pere->clesHaplo_2;
 					}
 				}
-				
-			}
-
-			if(nbRecomb2 > 0){ //Recombination event in mother
-				nbRecomb2 = 1; // limiting to 1 for now
-				pHap = getRandomNumber(0);
-				if(pHap<0.25){ // Recombinant Gamete not inherited
-					Ordre[i]->clesHaplo_1=Ordre[i]->mere->clesHaplo_1;
-				}
-				else if(pHap<0.50){// Recombinant Gamete not inherited
-					Ordre[i]->clesHaplo_1=Ordre[i]->mere->clesHaplo_2;
-				}
-				else{			 //Recombinant Gamete inherited	
-					tailleTot = getRandomNumber(0);
-					makeRecombM(Ordre[i], hapRef, pHap, tailleTot, clesSim);
-				}
 			}
 			else{
-				pHap = getRandomNumber(0);
-				if(Ordre[i]->mere != NULL){
+				outAllHaplo << "0,0,0;" ;
+				Ordre[i]->clesHaplo_1 = 0;
+			}
+
+			if(Ordre[i]->mere != NULL){
+				outAllHaplo << nbRecomb2 << ",";
+				if(nbRecomb2 > 0){ //Recombination event in mother
+					nbRecomb2 = 1; //for now limiting to 1 crossover
+					double tailleTot[nbRecomb2];
+					pHap = getRandomNumber(0);
+					outAllHaplo << pHap;
+
+					for(int j=0;j<nbRecomb2;j++){
+						tailleTot[j] = getRandomNumber(0);
+						outAllHaplo << "," << tailleTot[j];
+					}
+					std::sort(tailleTot,tailleTot + nbRecomb2);
+					makeRecombM(Ordre[i], hapRef, pHap, nbRecomb2, tailleTot, clesSim);
+					outAllHaplo << "}";
+				}	
+				else{
+					pHap = getRandomNumber(0);
+					outAllHaplo << pHap << ",0}";
 					if(pHap<0.50){
-						 Ordre[i]->clesHaplo_2=Ordre[i]->mere->clesHaplo_1;
+						Ordre[i]->clesHaplo_2=Ordre[i]->mere->clesHaplo_1;
 					}
 					else{
 						Ordre[i]->clesHaplo_2=Ordre[i]->mere->clesHaplo_2;
-					}
+					}		
 				}
-			
+			}
+			else{
+				outAllHaplo << "0,0,0}";
+				Ordre[i]->clesHaplo_2 = 0;
 			}			
+
 			std::stringstream hap;
 
 			haplotype* tmp = (*hapRef).find(Ordre[i]->clesHaplo_1)->second;
@@ -317,7 +330,7 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 				pos = tmp->pos;
 				if(pos == -1.0) pos = 1;
 			}	
-			outAllHaplo <<"{"<< csimul+1 <<";"<< Ordre[i]->nom <<";"<< nbRecomb1 << "-" << nbRecomb2 <<"}"<< hap.str() << std::endl;
+			outAllHaplo << hap.str() << std::endl;
 
 		}
 		
@@ -342,6 +355,7 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 			}
 			outHaplo <<"{"<< csimul+1 <<";"<< NoeudPro[i]->nom << ";" << 0 << "}"<< hap.str() << std::endl;
 		}
+		Rcpp::Rcout << "check4" << std::endl;
 		//delete haplotypes from memory before next iteration of simulation
 		for( int i=cleFixe; i<clesSim; i++) {
 			haplotype* tmp = (*hapRef).find(i)->second; //hapKey.second;
@@ -355,6 +369,7 @@ std::string simulhaplo(int* Genealogie, int* plProposant, int lNProposant, int* 
 
 
 	} // end of the for loop that goes through the # of simulations
+	
 	outHaplo.close();
 	outAllHaplo.close();
 
@@ -414,172 +429,177 @@ double getRandomNumber(int exponential)
 }
 
 //no longer call this function in simulhaplo, do it directly in the main loop of simulhaplo
-int descendreHaplotypes(CIndSimul* Ordre_tmp, double probHap)
-{
-  if(Ordre_tmp->pere != NULL && Ordre_tmp->mere != NULL) {
-    if     (probHap < 0.25){ Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_1; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_1; }
-    else if(probHap < 0.50){ Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_2; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_1; }
-    else if(probHap < 0.75){ Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_1; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_2; }
-    else				  { Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_2; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_2; }
-  }
-  else if( Ordre_tmp->pere != NULL ) {  // Faire qq chose ici pour la mere et le pere qui est NULL ...
-    if(probHap < 0.5) Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_1;
-    else			  Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_2;
-    Ordre_tmp->clesHaplo_2 = 0;
-  }
-  else if( Ordre_tmp->mere != NULL ) {
-    if(probHap < 0.5) Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_1;
-    else			  Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_2;
-    Ordre_tmp->clesHaplo_1 = 0;
-  }
-  else { // les 2 sont NULL
-    Ordre_tmp->clesHaplo_1 = 0;
-    Ordre_tmp->clesHaplo_2 = 0;
-  }
-  return 0;
-}
+// int descendreHaplotypes(CIndSimul* Ordre_tmp, double probHap)
+// {
+//   if(Ordre_tmp->pere != NULL && Ordre_tmp->mere != NULL) {
+//     if     (probHap < 0.25){ Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_1; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_1; }
+//     else if(probHap < 0.50){ Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_2; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_1; }
+//     else if(probHap < 0.75){ Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_1; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_2; }
+//     else				  { Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_2; Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_2; }
+//   }
+//   else if( Ordre_tmp->pere != NULL ) {  // Faire qq chose ici pour la mere et le pere qui est NULL ...
+//     if(probHap < 0.5) Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_1;
+//     else			  Ordre_tmp->clesHaplo_1 = Ordre_tmp->pere->clesHaplo_2;
+//     Ordre_tmp->clesHaplo_2 = 0;
+//   }
+//   else if( Ordre_tmp->mere != NULL ) {
+//     if(probHap < 0.5) Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_1;
+//     else			  Ordre_tmp->clesHaplo_2 = Ordre_tmp->mere->clesHaplo_2;
+//     Ordre_tmp->clesHaplo_1 = 0;
+//   }
+//   else { // les 2 sont NULL
+//     Ordre_tmp->clesHaplo_1 = 0;
+//     Ordre_tmp->clesHaplo_2 = 0;
+//   }
+//   return 0;
+// }
 
 //no longer use this function for simulhaplo now it instead uses makeRecombF for recombination of father's chromosomes and makeRecombM for mother
-void makeRecomb( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
-{
-//  double posRecomb = 0.5;
-//  double probHap = 0.5;
-  int pereHap = 0, mereHap = 0;
-  if     (probHap < 0.25){ pereHap = 1; mereHap = 1; }
-  else if(probHap < 0.50){ pereHap = 1; mereHap = 0; }
-  else if(probHap < 0.75){ pereHap = 0; mereHap = 1; }
+// void makeRecomb( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
+// {
+//   int pereHap = 0, mereHap = 0;
+//   if     (probHap < 0.25){ pereHap = 1; mereHap = 1; }
+//   else if(probHap < 0.50){ pereHap = 1; mereHap = 0; }
+//   else if(probHap < 0.75){ pereHap = 0; mereHap = 1; }
 
-  haplotype *hapPere, *hapMere;
-  if(Ordre_tmp->pere!= NULL && Ordre_tmp->mere!= NULL) {
-  if(pereHap == 0) hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
-  else             hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
-  if(mereHap == 0) hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
-  else             hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
-  }
-  else if( Ordre_tmp->pere != NULL ) {
-    if(pereHap == 0) hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
-    else             hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
-    hapMere = (*hapRef).find(0)->second;
-  }
-  else if( Ordre_tmp->mere != NULL ) {
-    hapPere = (*hapRef).find(0)->second;
-    if(mereHap == 0) hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
-    else             hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
-  }
-  else {
-    hapPere = (*hapRef).find(0)->second;
-    hapMere = (*hapRef).find(0)->second;
-  }
+//   haplotype *hapPere, *hapMere;
+//   if(Ordre_tmp->pere!= NULL && Ordre_tmp->mere!= NULL) {
+//   if(pereHap == 0) hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
+//   else             hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
+//   if(mereHap == 0) hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
+//   else             hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
+//   }
+//   else if( Ordre_tmp->pere != NULL ) {
+//     if(pereHap == 0) hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
+//     else             hapPere = (*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
+//     hapMere = (*hapRef).find(0)->second;
+//   }
+//   else if( Ordre_tmp->mere != NULL ) {
+//     hapPere = (*hapRef).find(0)->second;
+//     if(mereHap == 0) hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
+//     else             hapMere = (*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
+//   }
+//   else {
+//     hapPere = (*hapRef).find(0)->second;
+//     hapMere = (*hapRef).find(0)->second;
+//   }
 
-  haplotype *hapChild_1 = new haplotype();
-  haplotype *hapChild_deb1 = hapChild_1;
-  recombine(hapPere, hapMere, hapChild_deb1, posRecomb);
-  Ordre_tmp->clesHaplo_1 = cle;
-  (*hapRef)[cle++] = hapChild_1;
+//   haplotype *hapChild_1 = new haplotype();
+//   haplotype *hapChild_deb1 = hapChild_1;
+//   recombine(hapPere, hapMere, hapChild_deb1, posRecomb);
+//   Ordre_tmp->clesHaplo_1 = cle;
+//   (*hapRef)[cle++] = hapChild_1;
 
-
-
-  haplotype *hapChild_2 = new haplotype();
-  haplotype *hapChild_deb2 = hapChild_2;
-  recombine(hapMere, hapPere, hapChild_deb2, posRecomb);  
-  Ordre_tmp->clesHaplo_2 = cle;
-  (*hapRef)[cle++] = hapChild_2;
+//   haplotype *hapChild_2 = new haplotype();
+//   haplotype *hapChild_deb2 = hapChild_2;
+//   recombine(hapMere, hapPere, hapChild_deb2, posRecomb);  
+//   Ordre_tmp->clesHaplo_2 = cle;
+//   (*hapRef)[cle++] = hapChild_2;
   
-}
+// }
 
-void makeRecombF( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
+void makeRecombF( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, int nbRecomb, double *posRecomb, int &cle )
 {
+	Rcpp::Rcout << "check5.1" << std::endl;
+
     haplotype *perehap1, *perehap2;
 
-    if (Ordre_tmp->pere != NULL){
-        if (probHap < 0.75){
-            perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
-            perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
-        } 
-        else{
-            perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
-            perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
-        }
-    }
-    else{
-        perehap1=(*hapRef).find(0)->second;
-        perehap2=(*hapRef).find(0)->second;   
-    }
+	if (probHap < 0.5){
+		perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
+		perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
+	} 
+	else{
+		perehap1=(*hapRef).find(Ordre_tmp->pere->clesHaplo_2)->second;
+		perehap2=(*hapRef).find(Ordre_tmp->pere->clesHaplo_1)->second;
+	}
 
     haplotype *hapChild_1 = new haplotype();
     haplotype *hapChild_deb1 = hapChild_1;
-    recombine(perehap1, perehap2, hapChild_deb1, posRecomb);
+    recombine(perehap1, perehap2, hapChild_deb1, nbRecomb, posRecomb);
     Ordre_tmp->clesHaplo_1 = cle;
     (*hapRef)[cle++] = hapChild_1;
 }
 
 
-void makeRecombM( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int &cle )
+void makeRecombM( CIndSimul *Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, int nbRecomb, double *posRecomb, int &cle )
 {
+	Rcpp::Rcout << "check5.2" << std::endl;
     haplotype *merehap1, *merehap2;
  
-    if (Ordre_tmp->mere != NULL){
-        if (probHap < 0.75){
-            merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
-            merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
-        } 
-        else{
-            merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
-            merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
-        }
-    }
-    else{
-        merehap1=(*hapRef).find(0)->second;
-        merehap2=(*hapRef).find(0)->second;   
-    }
+	if (probHap < 0.5){
+		merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
+		merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
+	} 
+	else{
+		merehap1=(*hapRef).find(Ordre_tmp->mere->clesHaplo_2)->second;
+		merehap2=(*hapRef).find(Ordre_tmp->mere->clesHaplo_1)->second;
+	}
 
     haplotype *hapChild_2 = new haplotype();
     haplotype *hapChild_deb2 = hapChild_2;
-    recombine(merehap1, merehap2, hapChild_deb2, posRecomb);
+    recombine(merehap1, merehap2, hapChild_deb2, nbRecomb, posRecomb);
     Ordre_tmp->clesHaplo_2 = cle;
     (*hapRef)[cle++] = hapChild_2;
 }
 
-void recombine(haplotype* hapBegin, haplotype* hapEnd, haplotype* hapChild, double posRecomb )
+void recombine(haplotype* hapBegin, haplotype* hapEnd, haplotype* hapChild, int nbRecomb, double* posRecomb )
 {
-  // de 0 a posRecomb on prend hapBegin
-  while(posRecomb > hapBegin->pos && hapBegin->pos != -1) {
-	(*hapChild).hap          = hapBegin->hap;
-	(*hapChild).pos          = hapBegin->pos;
-	(*hapChild).fixe         = 0;
-	(*hapChild).next_segment = new haplotype();//[1];
-	hapChild               = hapChild->next_segment;
-	hapBegin               = hapBegin->next_segment;
-  }
-  // on ajoute la recomb pour hapChild
-  (*hapChild).hap          = hapBegin->hap;
-  (*hapChild).pos          = posRecomb;
-  (*hapChild).fixe         = 0;
-  
-  // on met le pointeur de hapEnd a la bonne place.
-  while(posRecomb > hapEnd->pos && hapEnd->pos != -1) hapEnd = hapEnd->next_segment;
-  
-  // on verifie que l'haplotype qui suit n'est pas le meme. Si oui, on met la nouvelle position.
-  if(hapEnd->hap == hapChild->hap){
-    (*hapChild).pos          = hapEnd->pos;
-  }
-  // sinon on poursuit avec hapEnd
-  else{
-    (*hapChild).next_segment = new haplotype();//[1];
-    hapChild                 = hapChild->next_segment;
-    (*hapChild).hap          = hapEnd->hap;
-    (*hapChild).pos          = hapEnd->pos;
-    (*hapChild).fixe         = 0;
-  }
-  
-  while(hapEnd->pos != -1.0) {
-	hapEnd                   = hapEnd->next_segment;
-	(*hapChild).next_segment = new haplotype();//[1]; 
-	hapChild                 = hapChild->next_segment;
-	(*hapChild).hap          = hapEnd->hap;
-	(*hapChild).pos          = hapEnd->pos;
-	(*hapChild).fixe         = 0;
-  }
+	haplotype* hap_active = hapBegin;
+	Rcpp::Rcout << "check6.0" << std::endl;
+
+	for (int i=0; i < nbRecomb; i++){
+		Rcpp::Rcout << "check6.1" << std::endl;
+		
+		double position = posRecomb[i];
+		// de 0 a posRecomb on prend hapBegin
+		while(position > hap_active->pos && hap_active->pos != -1) {
+			(*hapChild).hap          = hap_active->hap;
+			(*hapChild).pos          = hap_active->pos;
+			(*hapChild).fixe         = 0;
+			(*hapChild).next_segment = new haplotype();//[1];
+			hapChild                 = hapChild->next_segment;
+			hap_active               = hap_active->next_segment;
+		}
+		Rcpp::Rcout << "check6.2" << std::endl;
+
+		// on ajoute la recomb pour hapChild
+		(*hapChild).hap          = hap_active->hap;
+		(*hapChild).pos          = position;
+		(*hapChild).fixe         = 0;
+
+		if(i%2 == 0){
+			hap_active = hapEnd;
+		}
+		else hap_active = hapBegin;
+		Rcpp::Rcout << "check6.3" << std::endl;
+
+		// on met le pointeur de hapEnd a la bonne place.
+		while(position > hap_active->pos && hap_active->pos != -1) hap_active = hap_active->next_segment;
+		Rcpp::Rcout << "check6.4" << std::endl;
+
+		// on verifie que l'haplotype qui suit n'est pas le meme. Si oui, on met la nouvelle position.
+		if(hap_active->hap == hapChild->hap){
+			(*hapChild).pos          = hap_active->pos;
+		}
+		else{
+			(*hapChild).next_segment = new haplotype();//[1];
+			hapChild                 = hapChild->next_segment;
+			(*hapChild).hap          = hap_active->hap;
+			(*hapChild).pos          = hap_active->pos;
+			(*hapChild).fixe         = 0;
+		}
+	}
+
+	while(hap_active->pos != -1.0) {
+		hap_active               = hap_active->next_segment;
+		(*hapChild).next_segment = new haplotype();//[1]; 
+		hapChild                 = hapChild->next_segment;
+		(*hapChild).hap          = hap_active->hap;
+		(*hapChild).pos          = hap_active->pos;
+		(*hapChild).fixe         = 0;
+	}
+	Rcpp::Rcout << "check6.9" << std::endl;
+
 }
 
 

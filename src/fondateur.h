@@ -24,13 +24,12 @@ int getNumberRec(double* probRecomb, int sex);
 
 double getRandomNumber(int exponential);
 
-int descendreHaplotypes(CIndSimul* Ordre_tmp, double probHap); //, /**/std::unordered_map<std::string, haplotype*>/* const std::unordered_map<std::string, haplotype*> &*/*hapRef);
+//int descendreHaplotypes(CIndSimul* Ordre_tmp, double probHap); //, /**/std::unordered_map<std::string, haplotype*>/* const std::unordered_map<std::string, haplotype*> &*/*hapRef);
+//void makeRecomb( CIndSimul* Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int& cle );
+void makeRecombM( CIndSimul* Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, int nbRecomb, double* posRecomb, int& cle );
+void makeRecombF( CIndSimul* Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, int nbRecomb, double* posRecomb, int& cle );
 
-void makeRecomb( CIndSimul* Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int& cle );
-void makeRecombM( CIndSimul* Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int& cle );
-void makeRecombF( CIndSimul* Ordre_tmp, std::unordered_map<int, haplotype*> *hapRef, double probHap, double posRecomb, int& cle );
-
-void recombine( haplotype* hapBegin, haplotype* hapEnd, haplotype* hapChild, double posRecomb );
+void recombine( haplotype* hapBegin, haplotype* hapEnd, haplotype* hapChild, int nbRecomb, double *posRecomb );
 
 bool reconstruct(std::string WD, const std::string &hapfilename, const std::string &simufilename,const std::string &SNPposfilename,const int &BPsize);
 

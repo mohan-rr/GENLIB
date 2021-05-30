@@ -115,11 +115,16 @@ gen.simuHaplo = function (gen, pro, ancestors, simulNo = 5000, RecombRate=c(0,0)
 		#stop("If reconstruction is set to 1 must specify the hap and map files")
 	if(Reconstruction==1 & BP==0)
 		stop("If reconstruction is set to 1, you must specify the size of the segment in MB")
-
+	if(Reconstruction==1 & (is.null(Hapfile) | is.null(Mapfile)))
+		stop("If reconstruction is set to 1, you must provide a hap file and map file")		
 	WD<-getwd()
 	if(Reconstruction == 1){
 		pathHap<-paste(WD,Hapfile,sep="/")
 		pathMap<-paste(WD,Mapfile,sep="/")
+	}
+	else {
+		pathHap=""
+		pathMap=""
 	}
 
 	returnsimuhaplo <- .Call("SPLUSSimulHaplo", gen@.Data, pro, length(pro), ancestors, length(ancestors), as.integer(simulNo), RecombRate, as.integer(Reconstruction), BP, WD, pathHap, pathMap, package="GENLIB")
